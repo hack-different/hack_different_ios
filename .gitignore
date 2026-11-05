@@ -20,7 +20,8 @@ xcuserdata/
 # Swift Package Manager
 .build/
 .swiftpm/
-Package.resolved
+# Package.resolved is committed: Xcode Cloud disables automatic
+# dependency resolution and fails without it.
 
 # Local overrides
 Configurations/Local.*.xcconfig
