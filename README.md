@@ -3,6 +3,7 @@
 iOS app for the **Hack Different** community built on the [AudienceKit Swift SDK](https://github.com/lwm-luminx/audience-kit-sdk.git).
 
 - **Audience Console**: `https://hack-different.admin.audiencekit.com/audiences/2416ce6c-f28a-4460-8b6f-840f3c0027c9`
+- **Base URL**: `https://hackdiffe.rent`
 - **Audience Host (`AUDIENCE_HOST`)**: `hack-different.admin.audiencekit.com`
 - **Audience ID (`AUDIENCE_ID`)**: `2416ce6c-f28a-4460-8b6f-840f3c0027c9`
 

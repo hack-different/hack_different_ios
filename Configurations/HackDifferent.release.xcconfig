@@ -4,7 +4,7 @@
 //
 
 SERVER_SCHEME = https
-SERVER_BASE = api.audiencekit.com
+SERVER_BASE = hackdiffe.rent
 
 AUDIENCE_HOST = hack-different.admin.audiencekit.com
 AUDIENCE_ID = 2416ce6c-f28a-4460-8b6f-840f3c0027c9
