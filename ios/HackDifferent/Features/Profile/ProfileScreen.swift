@@ -80,7 +80,9 @@ struct ProfileScreen: View {
                 // AudienceKit Environment Details
                 Section("AudienceKit Connection") {
                     LabeledContent("Audience", value: appModel.brand.audienceName)
-                    LabeledContent("Host", value: appModel.configuration.host)
+                    LabeledContent("API", value: appModel.configuration.baseURL.host ?? appModel.configuration.baseURL.absoluteString)
+                        .font(.caption.monospaced())
+                    LabeledContent("Tenant", value: appModel.configuration.host)
                         .font(.caption.monospaced())
                     LabeledContent("Audience ID", value: appModel.configuration.audienceID)
                         .font(.caption2.monospaced())

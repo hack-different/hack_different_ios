@@ -110,7 +110,7 @@ struct LoginScreen: View {
                         .font(.footnote.weight(.medium))
                     }
 
-                    Text("Connected to \(appModel.configuration.host)")
+                    Text("Connected to \(appModel.configuration.baseURL.host ?? "") · \(appModel.configuration.host)")
                         .font(.caption2.monospaced())
                         .foregroundStyle(.tertiary)
                 }
