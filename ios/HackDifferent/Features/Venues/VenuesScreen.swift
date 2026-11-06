@@ -73,7 +73,7 @@ struct VenuesScreen: View {
                     }
                 }
             }
-            .navigationTitle("Spaces & Venues")
+            .navigationTitle("Spaces")
             .searchable(text: $searchText, prompt: "Search hackerspaces, con venues, cities…")
             .refreshable {
                 await appModel.refreshCatalog()

@@ -159,7 +159,7 @@ struct ChatHubScreen: View {
                     }
                 }
             }
-            .navigationTitle("Chat & Discord")
+            .navigationTitle("Chat")
             .refreshable {
                 await appModel.refreshCatalog()
             }

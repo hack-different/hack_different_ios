@@ -8,7 +8,7 @@ import Foundation
 
 /// Categorizes an event in Hack Different as a Conference or a Meetup.
 public enum EventKind: String, CaseIterable, Sendable, Identifiable {
-    case all = "All Events"
+    case all = "All"
     case conference = "Conferences"
     case meetup = "Meetups"
 

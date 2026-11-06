@@ -75,7 +75,7 @@ fun SpacesScreen(appState: HackDifferentAppState) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hackerspaces & Venues") },
+                title = { Text("Spaces") },
                 actions = {
                     IconButton(onClick = { appState.refreshAll() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

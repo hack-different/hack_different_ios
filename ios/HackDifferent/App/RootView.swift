@@ -55,19 +55,19 @@ private struct MainTabView: View {
         @Bindable var bindableApp = appModel
 
         TabView(selection: $bindableApp.selectedTab) {
-            Tab("Conferences & Meetups", systemImage: "calendar.badge.clock", value: AppModel.Tab.events) {
+            Tab("Events", systemImage: "calendar.badge.clock", value: AppModel.Tab.events) {
                 EventsScreen()
             }
 
-            Tab("Spaces & Venues", systemImage: "cpu.fill", value: AppModel.Tab.spaces) {
+            Tab("Spaces", systemImage: "cpu.fill", value: AppModel.Tab.spaces) {
                 VenuesScreen()
             }
 
-            Tab("Chat & Discord", systemImage: "bubble.left.and.bubble.right.fill", value: AppModel.Tab.chat) {
+            Tab("Chat", systemImage: "bubble.left.and.bubble.right.fill", value: AppModel.Tab.chat) {
                 ChatHubScreen()
             }
 
-            Tab("Tickets & Passes", systemImage: "qrcode.viewfinder", value: AppModel.Tab.passes) {
+            Tab("Passes", systemImage: "qrcode.viewfinder", value: AppModel.Tab.passes) {
                 PassesScreen()
             }
 

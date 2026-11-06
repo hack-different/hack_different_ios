@@ -99,7 +99,7 @@ struct EventsScreen: View {
                     }
                 }
             }
-            .navigationTitle("Conferences & Meetups")
+            .navigationTitle("Events")
             .searchable(text: $searchText, prompt: "Search cons, meetups, venues, tags…")
             .refreshable {
                 await appModel.refreshCatalog()

@@ -8,9 +8,9 @@ import Foundation
 
 /// Categorizes a venue in Hack Different as a Hackerspace or Conference Venue.
 public enum SpaceCategory: String, CaseIterable, Sendable, Identifiable {
-    case all = "All Spaces"
+    case all = "All"
     case hackerspace = "Hackerspaces"
-    case conferenceVenue = "Con Venues"
+    case conferenceVenue = "Venues"
 
     public var id: String { rawValue }
 

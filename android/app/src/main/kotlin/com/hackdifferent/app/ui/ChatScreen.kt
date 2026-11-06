@@ -65,7 +65,7 @@ fun ChatScreen(appState: HackDifferentAppState) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Venue Chat & Discord") })
+            TopAppBar(title = { Text("Chat") })
         },
     ) { innerPadding ->
         LazyColumn(

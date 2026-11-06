@@ -75,7 +75,7 @@ fun EventsScreen(appState: HackDifferentAppState) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Conferences & Meetups") },
+                title = { Text("Events") },
                 actions = {
                     IconButton(onClick = { appState.refreshAll() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

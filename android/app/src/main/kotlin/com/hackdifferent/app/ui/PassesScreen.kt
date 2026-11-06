@@ -67,7 +67,7 @@ fun PassesScreen(appState: HackDifferentAppState) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Passes & Admissions") },
+                title = { Text("Passes") },
                 actions = {
                     IconButton(onClick = { appState.refreshAll() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

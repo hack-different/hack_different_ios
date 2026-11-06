@@ -76,7 +76,7 @@ struct PassesScreen: View {
                     }
                 }
             }
-            .navigationTitle("Tickets & Passes")
+            .navigationTitle("Passes")
             .refreshable {
                 await appModel.refreshAdmissions()
                 await appModel.refreshCatalog()
