@@ -1,4 +1,4 @@
-# Xcode
+# Xcode / iOS
 build/
 DerivedData/
 *.pbxuser
@@ -23,8 +23,21 @@ xcuserdata/
 # Package.resolved is committed: Xcode Cloud disables automatic
 # dependency resolution and fails without it.
 
-# Local overrides
-Configurations/Local.*.xcconfig
+# Local iOS overrides
+ios/Configurations/Local.*.xcconfig
+
+# Android / Gradle
+.gradle/
+android/.gradle/
+android/.kotlin/
+android/build/
+android/*/build/
+android/local.properties
+local.properties
+*.iml
+.idea/
+*.apk
+*.aab
 
 # macOS
 .DS_Store
