@@ -4,6 +4,7 @@
 //
 
 import AudienceKit
+import AudienceKitUI
 import SwiftUI
 
 struct VenueDetailScreen: View {
@@ -88,6 +89,14 @@ struct VenueDetailScreen: View {
                     }
                 }
                 .padding(.vertical, 4)
+            }
+
+            // Calendar: every event here in the person's one calendar feed (AudienceKit calendar sync).
+            Section {
+                VenueCalendarButton(client: appModel.api.client, venueID: venueID,
+                                    venueName: detail?.name ?? initialName)
+            } footer: {
+                Text("Adds every event here to your calendar, kept up to date as meetups are added, moved or canceled.")
             }
 
             // Venue / Con Chat & Discord Section

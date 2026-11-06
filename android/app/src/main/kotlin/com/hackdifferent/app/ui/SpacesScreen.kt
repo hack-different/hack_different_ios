@@ -282,6 +282,8 @@ private fun VenueDetailSheet(
                 Text("Join ${venue.name} Live Chat")
             }
 
+            VenueCalendarButton(client = appState.client, venueId = venue.id, venueName = venue.name)
+
             detail?.discordLink?.let { discord ->
                 OutlinedButton(
                     onClick = { appState.openExternalUrl(context, discord.webUrl) },
