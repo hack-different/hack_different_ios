@@ -58,7 +58,7 @@ struct HackDifferentTests {
             id: "sl-1",
             handle: "hackdifferent",
             provider: "discord",
-            url: URL(string: "https://discord.gg/hackdifferent")
+            url: "https://discord.gg/hackdifferent"
         )
         let resolved = DiscordChannelLink.resolve(title: "Space Discord", socialLinks: [link])
         #expect(resolved?.webURL == URL(string: "https://discord.gg/hackdifferent"))

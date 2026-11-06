@@ -6,17 +6,18 @@ import androidx.compose.runtime.setValue
 import com.audiencekit.AudienceKitClient
 import com.audiencekit.AudienceKitException
 import com.audiencekit.CableConnection
-import com.audiencekit.CableEvent
+import com.audiencekit.ChatMessage
+import com.audiencekit.ChatRoomEvent
+import com.audiencekit.ChatRoomUpdate
+import com.audiencekit.ChatRosterPerson
+import com.audiencekit.chat
+import com.audiencekit.removeChatMessage
+import com.audiencekit.sendChatMessage
 import com.hackdifferent.core.AppConfig
-import com.hackdifferent.core.ChatMessageItem
-import com.hackdifferent.core.ChatParticipant
 import com.hackdifferent.core.ChatRoomTarget
-import com.hackdifferent.core.HackDifferentApi
-import com.hackdifferent.core.RoomSubscriptionData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -32,23 +33,16 @@ sealed interface ChatConnectionStatus {
 class ChatRoomController(
     val room: ChatRoomTarget,
     private val cable: CableConnection,
-    private val api: HackDifferentApi,
     private val client: AudienceKitClient,
     private val scope: CoroutineScope,
 ) {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        coerceInputValues = true
-    }
-
     var status by mutableStateOf<ChatConnectionStatus>(ChatConnectionStatus.Connecting)
         private set
-    var messages by mutableStateOf<List<ChatMessageItem>>(emptyList())
+    var messages by mutableStateOf<List<ChatMessage>>(emptyList())
         private set
-    var pinnedMessage by mutableStateOf<ChatMessageItem?>(null)
+    var pinnedMessage by mutableStateOf<ChatMessage?>(null)
         private set
-    var participants by mutableStateOf<List<ChatParticipant>>(emptyList())
+    var participants by mutableStateOf<List<ChatRosterPerson>>(emptyList())
         private set
     var isSending by mutableStateOf(false)
         private set
@@ -63,17 +57,7 @@ class ChatRoomController(
 
         subscriptionJob = scope.launch {
             val audienceId = runCatching { client.audienceId() }.getOrDefault(AppConfig.DEFAULT_AUDIENCE_ID)
-            val query = HackDifferentApi.Documents.chatRoomSubscription(room, watch)
-            val variables = JsonObject(mapOf("id" to JsonPrimitive(room.recordId.lowercase())))
-
-            cable.subscribe(
-                audienceId = audienceId,
-                query = query,
-                variables = variables,
-                operationName = "ChatRoom",
-            ).collect { event ->
-                handleCableEvent(event)
-            }
+            cable.chat(audienceId, room.room, watch).collect(::handleUpdate)
         }
     }
 
@@ -90,7 +74,7 @@ class ChatRoomController(
 
         scope.launch {
             try {
-                val sent = api.sendChatMessage(trimmed, room)
+                val sent = client.sendChatMessage(trimmed, room.room)
                 appendOrUpdateMessage(sent)
             } catch (e: AudienceKitException) {
                 sendError = e.message ?: "Failed to send message."
@@ -102,10 +86,10 @@ class ChatRoomController(
         }
     }
 
-    fun deleteOwnMessage(message: ChatMessageItem) {
+    fun deleteOwnMessage(message: ChatMessage) {
         scope.launch {
             try {
-                api.removeMyChatMessage(message.id)
+                client.removeChatMessage(message.id.lowercase())
                 messages = messages.filterNot { it.id.equals(message.id, ignoreCase = true) }
             } catch (e: AudienceKitException) {
                 sendError = e.message
@@ -115,91 +99,65 @@ class ChatRoomController(
         }
     }
 
-    private fun handleCableEvent(event: CableEvent) {
-        when (event) {
-            CableEvent.Subscribed -> Unit
-            is CableEvent.Result -> processResult(event)
-            CableEvent.Rejected -> {
+    private fun handleUpdate(update: ChatRoomUpdate) {
+        when (update) {
+            ChatRoomUpdate.Subscribed -> Unit
+            is ChatRoomUpdate.Refused -> {
+                val firstError = (update.errors.firstOrNull() as? JsonObject)
+                    ?.get("message")
+                    ?.let { (it as? JsonPrimitive)?.contentOrNull }
                 status = ChatConnectionStatus.NotPresent(
-                    "Check in at ${room.displayName} or join the Discord server to chat from anywhere.",
+                    firstError ?: "Check in at ${room.displayName} or join the Discord server to chat from anywhere.",
                 )
             }
-            is CableEvent.Disconnected -> {
-                status = ChatConnectionStatus.Disconnected(reconnecting = event.reconnects)
+            is ChatRoomUpdate.Disconnected -> {
+                status = ChatConnectionStatus.Disconnected(reconnecting = update.reconnects)
             }
+            is ChatRoomUpdate.Event -> handleEvent(update.event)
         }
     }
 
-    private fun processResult(event: CableEvent.Result) {
-        val envelope = event.result
-        if (envelope.errors.isNotEmpty() && envelope.data == null) {
-            val firstError = (envelope.errors.firstOrNull() as? JsonObject)
-                ?.get("message")
-                ?.let { (it as? JsonPrimitive)?.contentOrNull }
-                ?: "Chat requires presence at ${room.displayName}."
-            status = ChatConnectionStatus.NotPresent(firstError)
-            return
-        }
-
-        val dataObj = envelope.data ?: return
-        val parsed = runCatching {
-            json.decodeFromJsonElement(RoomSubscriptionData.serializer(), dataObj)
-        }.getOrNull() ?: return
-
-        val roomEvent = parsed.room ?: return
-        when (roomEvent.typename) {
-            "ChatJoined" -> {
-                status = if (roomEvent.outOfRange == true) {
-                    ChatConnectionStatus.OutOfRange
-                } else {
-                    ChatConnectionStatus.Connected
-                }
-                participants = roomEvent.roster?.people.orEmpty()
-                messages = roomEvent.history.orEmpty().mapNotNull { it.message }
-                pinnedMessage = roomEvent.pinnedMessage?.message
+    private fun handleEvent(event: ChatRoomEvent) {
+        when (event) {
+            is ChatRoomEvent.Joined -> {
+                status = if (event.outOfRange) ChatConnectionStatus.OutOfRange else ChatConnectionStatus.Connected
+                participants = event.people
+                messages = event.history
+                pinnedMessage = event.pinned
             }
-            "ChatMessagePosted", "ChatMessageUpdated" -> {
-                roomEvent.message?.let(::appendOrUpdateMessage)
+            is ChatRoomEvent.Posted -> appendOrUpdateMessage(event.message)
+            is ChatRoomEvent.Updated -> appendOrUpdateMessage(event.message)
+            is ChatRoomEvent.Removed -> {
+                messages = messages.filterNot { it.id.equals(event.messageId, ignoreCase = true) }
             }
-            "ChatMessageRemoved" -> {
-                val removedId = roomEvent.messageId ?: return
-                messages = messages.filterNot { it.id.equals(removedId, ignoreCase = true) }
+            is ChatRoomEvent.PinChanged -> {
+                pinnedMessage = if (event.pinned) event.announcement else null
             }
-            "ChatPinChanged" -> {
-                pinnedMessage = if (roomEvent.pinned == true) roomEvent.announcement else null
-            }
-            "ChatRoomCleared" -> {
-                messages = emptyList()
-            }
-            "ChatPresenceChanged" -> {
-                val userId = roomEvent.userId ?: return
-                val isOnline = roomEvent.presence?.equals("ONLINE", ignoreCase = true) == true
-                if (isOnline) {
-                    if (participants.none { it.userId == userId }) {
-                        participants = participants + ChatParticipant(
-                            userId = userId,
-                            name = roomEvent.name ?: "Hacker",
-                            avatarUrl = roomEvent.avatarUrl,
+            is ChatRoomEvent.Cleared -> messages = emptyList()
+            is ChatRoomEvent.PresenceChanged -> {
+                if (event.presence.equals("ONLINE", ignoreCase = true)) {
+                    if (participants.none { it.userId == event.userId }) {
+                        participants = participants + ChatRosterPerson(
+                            userId = event.userId,
+                            name = event.name,
+                            avatarUrl = event.avatarUrl,
                         )
                     }
                 } else {
-                    participants = participants.filterNot { it.userId == userId }
+                    participants = participants.filterNot { it.userId == event.userId }
                 }
             }
-            "ChatRangeChanged" -> {
-                status = if (roomEvent.outOfRange == true) {
-                    ChatConnectionStatus.OutOfRange
-                } else {
-                    ChatConnectionStatus.Connected
-                }
+            is ChatRoomEvent.RangeChanged -> {
+                status = if (event.outOfRange) ChatConnectionStatus.OutOfRange else ChatConnectionStatus.Connected
             }
-            "ChatLeft" -> {
+            is ChatRoomEvent.Left -> {
                 status = ChatConnectionStatus.NotPresent("You left the ${room.displayName} chat range.")
             }
+            is ChatRoomEvent.Unknown -> Unit
         }
     }
 
-    private fun appendOrUpdateMessage(item: ChatMessageItem) {
+    private fun appendOrUpdateMessage(item: ChatMessage) {
         val index = messages.indexOfFirst { it.id.equals(item.id, ignoreCase = true) }
         messages = if (index >= 0) {
             messages.toMutableList().also { it[index] = item }

@@ -1,33 +1,23 @@
 package com.hackdifferent.core
 
-import kotlinx.serialization.Serializable
+import com.audiencekit.SocialLink
 import java.net.URI
 
-/**
- * A social profile link returned on a venue or person's `profile.socialLinks`.
- */
-@Serializable
-public data class SocialLink(
-    val id: String,
-    val handle: String = "",
-    val provider: String = "",
-    val url: String? = null,
-) {
-    public val isDiscord: Boolean
-        get() {
-            if (provider.equals("discord", ignoreCase = true)) return true
-            val host = url?.let { runCatching { URI(it).host?.lowercase() }.getOrNull() }.orEmpty()
-            return host.contains("discord.gg") || host.contains("discord.com")
-        }
+/** Whether it points at a Discord server. */
+public val SocialLink.isDiscord: Boolean
+    get() {
+        if (provider.equals("discord", ignoreCase = true)) return true
+        val host = url?.let { runCatching { URI(it).host?.lowercase() }.getOrNull() }.orEmpty()
+        return host.contains("discord.gg") || host.contains("discord.com")
+    }
 
-    public val displayLabel: String
-        get() {
-            if (isDiscord) {
-                return if (handle.isBlank()) "Discord Server" else "Discord ($handle)"
-            }
-            return if (handle.isBlank()) provider.replaceFirstChar { it.uppercase() } else "@$handle"
+public val SocialLink.displayLabel: String
+    get() {
+        if (isDiscord) {
+            return if (handle.isBlank()) "Discord Server" else "Discord ($handle)"
         }
-}
+        return if (handle.isBlank()) provider.replaceFirstChar { it.uppercase() } else "@$handle"
+    }
 
 /**
  * Represents a resolved Discord server or channel link for a hackerspace, conference venue, or event.
@@ -50,11 +40,12 @@ public data class DiscordChannelLink(
             sourceUrl: String? = null,
         ): DiscordChannelLink? {
             socialLinks.firstOrNull { it.isDiscord }?.let { link ->
-                if (!link.url.isNullOrBlank()) {
+                val url = link.url
+                if (!url.isNullOrBlank()) {
                     return DiscordChannelLink(
                         title = title,
                         subtitle = link.handle.ifBlank { "Join Discord" },
-                        webUrl = link.url,
+                        webUrl = url,
                     )
                 } else if (link.handle.isNotBlank()) {
                     return DiscordChannelLink(

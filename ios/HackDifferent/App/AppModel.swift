@@ -9,7 +9,7 @@ import Foundation
 import Observation
 
 /// Composition root for Hack Different.
-/// Holds the `AudienceKitClient`, `AudienceCable`, `BrandStore`, `SessionStore`, and shared data state.
+/// Holds the `AudienceKitClient`, `AudienceCable`, `BrandStore`, `SessionStore`, `LocationService`, and shared data state.
 @MainActor
 @Observable
 public final class AppModel {
@@ -27,6 +27,7 @@ public final class AppModel {
     public let api: HackDifferentAPI
     public let brand: BrandStore
     public let session: SessionStore
+    public let location: LocationService
 
     public var selectedTab: Tab = .events
 
@@ -52,11 +53,14 @@ public final class AppModel {
         self.api = api
         self.brand = BrandStore(client: client)
         self.session = SessionStore(client: client, api: api, configuration: configuration)
+        self.location = LocationService(client: client)
 
         AudienceUpdates.configure(session: client, appName: "Hack Different")
     }
 
     public func start() async {
+        location.refreshIfAuthorized()
+
         async let brandingTask: Void = brand.loadBranding()
         async let sessionTask: Void = session.start()
         _ = await (brandingTask, sessionTask)
@@ -72,21 +76,69 @@ public final class AppModel {
         catalogError = nil
         defer { isLoadingCatalog = false }
 
-        do {
-            async let fetchedVenues = api.venues()
-            async let fetchedEvents = api.upcomingEvents()
-            async let fetchedLocales = api.locales()
-            async let fetchedAdmissions = try? api.admissions()
+        location.refreshIfAuthorized()
 
-            let (v, e, l, a) = try await (fetchedVenues, fetchedEvents, fetchedLocales, fetchedAdmissions)
+        async let venuesResult: Result<[Venue], any Error> = {
+            do { return .success(try await client.venues()) }
+            catch { return .failure(error) }
+        }()
+        async let eventsResult: Result<[ConferenceEvent], any Error> = {
+            do { return .success(try await api.upcomingEvents()) }
+            catch { return .failure(error) }
+        }()
+        async let localesResult: Result<[AudienceLocale], any Error> = {
+            do { return .success(try await client.locales()) }
+            catch { return .failure(error) }
+        }()
+        async let admissionsResult: [Admission]? = try? api.admissions()
+
+        let (vRes, eRes, lRes, aRes) = await (venuesResult, eventsResult, localesResult, admissionsResult)
+
+        var errors: [String] = []
+
+        switch vRes {
+        case .success(let v):
             venues = v.filter { !$0.hidden }
+        case .failure(let error):
+            errors.append((error as? AudienceKitError)?.message ?? error.localizedDescription)
+        }
+
+        switch eRes {
+        case .success(let e):
             events = e.filter { !$0.isCanceled }
+        case .failure(let error):
+            errors.append((error as? AudienceKitError)?.message ?? error.localizedDescription)
+        }
+
+        switch lRes {
+        case .success(let l) where !l.isEmpty:
             locales = l
-            admissions = a ?? []
-        } catch let error as AudienceKitError {
-            catalogError = error.message
-        } catch {
-            catalogError = error.localizedDescription
+        case .success, .failure:
+            var derived: [AudienceLocale] = []
+            var seen = Set<String>()
+            for venue in venues where !seen.contains(venue.locale.id) {
+                seen.insert(venue.locale.id)
+                derived.append(venue.locale)
+            }
+            for event in events {
+                if let locale = event.locale, !seen.contains(locale.id) {
+                    seen.insert(locale.id)
+                    derived.append(locale)
+                }
+            }
+            if !derived.isEmpty {
+                locales = derived
+            }
+        }
+
+        if let aRes {
+            admissions = aRes
+        }
+
+        location.updateFallbackClosestLocale(venues: venues, locales: locales)
+
+        if venues.isEmpty && events.isEmpty, let firstError = errors.first {
+            catalogError = firstError
         }
     }
 

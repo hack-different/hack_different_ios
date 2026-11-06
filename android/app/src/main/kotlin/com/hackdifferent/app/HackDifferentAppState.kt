@@ -1,12 +1,18 @@
 package com.hackdifferent.app
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import com.audiencekit.Admission
 import com.audiencekit.AppleWebSignIn
 import com.audiencekit.AudienceKitClient
@@ -17,6 +23,8 @@ import com.audiencekit.Branding
 import com.audiencekit.CableConnection
 import com.audiencekit.CableSocket
 import com.audiencekit.CableSocketFactory
+import com.audiencekit.Coordinate
+import com.audiencekit.Coordinates
 import com.audiencekit.DeviceDescription
 import com.audiencekit.RSVPState
 import com.audiencekit.SelfUser
@@ -28,7 +36,7 @@ import com.hackdifferent.core.AppConfig
 import com.hackdifferent.core.ChatRoomTarget
 import com.hackdifferent.core.ConferenceEvent
 import com.hackdifferent.core.HackDifferentApi
-import com.hackdifferent.core.VenueDetail
+import com.hackdifferent.core.SpaceDetail
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -124,6 +132,12 @@ class HackDifferentAppState(
         private set
     var isLoadingDirectory by mutableStateOf(false)
         private set
+    var hasLocationOptIn by mutableStateOf(hasGrantedLocationPermission(appContext))
+        private set
+    var userCoordinate by mutableStateOf<Coordinate?>(null)
+        private set
+    var closestLocale by mutableStateOf<AudienceLocale?>(null)
+        private set
 
     val audienceName: String
         get() = branding?.audience?.name ?: "Hack Different"
@@ -191,11 +205,12 @@ class HackDifferentAppState(
     fun refreshAll() {
         scope.launch {
             isLoadingDirectory = true
+            refreshLocationIfPermitted()
             val venuesJob = launch {
-                runCatching { api.venues() }.onSuccess { venues = it }
+                runCatching { client.venues() }.onSuccess { venues = it }
             }
             val localesJob = launch {
-                runCatching { api.locales() }.onSuccess { locales = it }
+                runCatching { client.locales() }.onSuccess { locales = it }
             }
             val eventsJob = launch {
                 runCatching { api.upcomingEvents() }.onSuccess { events = it }
@@ -211,9 +226,62 @@ class HackDifferentAppState(
             eventsJob.join()
             admissionsJob.join()
             meJob.join()
+            if (locales.isEmpty()) {
+                val derived = LinkedHashMap<String, AudienceLocale>()
+                venues.forEach { derived.putIfAbsent(it.locale.id, it.locale) }
+                events.mapNotNull { it.locale }.forEach { derived.putIfAbsent(it.id, it) }
+                if (derived.isNotEmpty()) {
+                    locales = derived.values.toList()
+                }
+            }
             isLoadingDirectory = false
         }
     }
+
+    @SuppressLint("MissingPermission")
+    fun refreshLocationIfPermitted() {
+        val granted = hasGrantedLocationPermission(appContext)
+        hasLocationOptIn = granted
+        if (!granted) return
+
+        val locationManager = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
+        val lastKnown: Location? = listOf(
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.PASSIVE_PROVIDER,
+        ).mapNotNull { provider ->
+            runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
+        }.maxByOrNull { it.time }
+
+        if (lastKnown != null) {
+            val coord = Coordinate(latitude = lastKnown.latitude, longitude = lastKnown.longitude)
+            userCoordinate = coord
+            scope.launch {
+                val resolved = runCatching {
+                    client.closestLocale(Coordinates(latitude = coord.latitude, longitude = coord.longitude))
+                }.getOrNull()
+                if (resolved != null) {
+                    closestLocale = resolved
+                }
+            }
+        }
+    }
+
+    fun isEventNearby(event: ConferenceEvent): Boolean {
+        if (!hasLocationOptIn) return false
+        val targetLocaleId = closestLocale?.id
+        if (targetLocaleId != null && event.locale?.id == targetLocaleId) return true
+        val coord = userCoordinate ?: return false
+        val eventCoord: Coordinate? = event.venue?.coordinate ?: venues.firstOrNull { it.id == event.venue?.id }?.location?.coordinate
+        if (eventCoord == null) return false
+        val results = FloatArray(1)
+        Location.distanceBetween(coord.latitude, coord.longitude, eventCoord.latitude, eventCoord.longitude, results)
+        return results[0] <= 80_000f
+    }
+
+    private fun hasGrantedLocationPermission(ctx: Context): Boolean =
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     fun startAppleSignIn(activityContext: Context) {
         errorMessage = null
@@ -314,7 +382,7 @@ class HackDifferentAppState(
         }
     }
 
-    suspend fun loadVenueDetail(venueId: String): VenueDetail? =
+    suspend fun loadVenueDetail(venueId: String): SpaceDetail? =
         runCatching { api.venueDetail(venueId) }.getOrNull()
 
     fun openChatRoom(room: ChatRoomTarget) {

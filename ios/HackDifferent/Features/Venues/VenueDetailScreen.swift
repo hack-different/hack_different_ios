@@ -14,7 +14,7 @@ struct VenueDetailScreen: View {
     let initialName: String
     var initialVenue: Venue?
 
-    @State private var detail: VenueDetail?
+    @State private var detail: SpaceDetail?
     @State private var isLoading = true
     @State private var isPurchasingCover = false
     @State private var errorMessage: String?
@@ -43,6 +43,14 @@ struct VenueDetailScreen: View {
                             Text(localeName)
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(.secondary)
+                        }
+
+                        if let distance = appModel.location.formattedDistance(
+                            to: detail?.venue.location?.coordinate ?? initialVenue?.location?.coordinate
+                        ) {
+                            Label(distance, systemImage: "location.fill")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.teal)
                         }
                     }
 
@@ -167,7 +175,7 @@ struct VenueDetailScreen: View {
 
                 if let links = detail?.socialLinks.filter({ !$0.isDiscord }), !links.isEmpty {
                     ForEach(links) { link in
-                        if let url = link.url {
+                        if let url = link.webURL {
                             Button {
                                 openURL(url)
                             } label: {
@@ -237,7 +245,7 @@ struct VenueDetailScreen: View {
                     }
 
                     ForEach(detail.ticketOffers) { offer in
-                        if let url = offer.url {
+                        if let url = offer.webURL {
                             Button {
                                 openURL(url)
                             } label: {
@@ -269,15 +277,22 @@ struct VenueDetailScreen: View {
 
             // Upcoming Conferences & Meetups at this Space
             Section("Upcoming Conferences & Meetups") {
-                if isLoading && detail == nil {
+                let venueEvents: [ConferenceEvent] = {
+                    if let loaded = detail?.upcomingEvents, !loaded.isEmpty {
+                        return loaded
+                    }
+                    return appModel.events.filter { $0.venue?.id == venueID }
+                }()
+
+                if isLoading && detail == nil && venueEvents.isEmpty {
                     HStack {
                         Spacer()
                         ProgressView("Loading schedule…")
                         Spacer()
                     }
                     .padding(.vertical, 12)
-                } else if let events = detail?.upcomingEvents, !events.isEmpty {
-                    ForEach(events) { event in
+                } else if !venueEvents.isEmpty {
+                    ForEach(venueEvents) { event in
                         NavigationLink {
                             EventDetailScreen(event: event)
                         } label: {

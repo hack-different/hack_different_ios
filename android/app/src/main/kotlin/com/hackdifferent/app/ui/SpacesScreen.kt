@@ -50,7 +50,7 @@ import com.audiencekit.Venue
 import com.hackdifferent.app.HackDifferentAppState
 import com.hackdifferent.core.ChatRoomTarget
 import com.hackdifferent.core.SpaceCategory
-import com.hackdifferent.core.VenueDetail
+import com.hackdifferent.core.SpaceDetail
 import com.hackdifferent.core.formattedAmount
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -219,7 +219,7 @@ private fun VenueDetailSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    var detail by remember { mutableStateOf<VenueDetail?>(null) }
+    var detail by remember { mutableStateOf<SpaceDetail?>(null) }
 
     LaunchedEffect(venue.id) {
         detail = appState.loadVenueDetail(venue.id)

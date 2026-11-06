@@ -1,6 +1,7 @@
 package com.hackdifferent.core
 
 import com.audiencekit.Money
+import com.audiencekit.SocialLink
 import com.audiencekit.Tag
 import kotlin.test.Test
 import kotlin.test.assertEquals

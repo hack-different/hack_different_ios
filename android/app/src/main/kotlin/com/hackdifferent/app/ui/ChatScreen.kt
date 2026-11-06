@@ -47,6 +47,8 @@ import com.hackdifferent.app.ChatRoomController
 import com.hackdifferent.app.HackDifferentAppState
 import com.hackdifferent.core.ChatRoomTarget
 import com.hackdifferent.core.SpaceCategory
+import com.hackdifferent.core.senderName
+import com.hackdifferent.core.text
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,7 +207,6 @@ private fun RoomChatView(
         ChatRoomController(
             room = room,
             cable = appState.cable,
-            api = appState.api,
             client = appState.client,
             scope = appState.scope,
         )

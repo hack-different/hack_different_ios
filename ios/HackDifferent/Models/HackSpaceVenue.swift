@@ -33,57 +33,25 @@ public enum SpaceCategory: String, CaseIterable, Sendable, Identifiable {
     }
 }
 
-/// A ticket or admission offer returned by `tickets { offers { nodes { ... } } }`.
-public struct TicketOffer: Codable, Hashable, Sendable, Identifiable {
-    public struct Seller: Codable, Hashable, Sendable {
-        public let key: String
-        public let name: String
+extension AdmissionOffer: @retroactive Identifiable {
+    public var id: String { "\(seller.key)-\(url ?? "in-app")-\(price?.cents ?? 0)" }
 
-        public init(key: String, name: String) {
-            self.key = key
-            self.name = name
-        }
-    }
-
-    public var id: String { "\(seller.key)-\(url?.absoluteString ?? "in-app")-\(price?.cents ?? 0)" }
-    public let price: Money?
-    public let seller: Seller
-    public let url: URL?
-
-    public init(price: Money? = nil, seller: Seller, url: URL? = nil) {
-        self.price = price
-        self.seller = seller
-        self.url = url
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case price, seller, url
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        price = try container.decodeIfPresent(Money.self, forKey: .price)
-        seller = try container.decode(Seller.self, forKey: .seller)
-        if let rawURL = try container.decodeIfPresent(String.self, forKey: .url), !rawURL.isEmpty {
-            url = URL(string: rawURL)
-        } else {
-            url = nil
-        }
-    }
+    /// Where to buy it, when the seller sells on the web.
+    public var webURL: URL? { url.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
 }
 
-/// Rich detail for a Hackerspace or Conference Venue, combining `AudienceKit.Venue`
-/// with its upcoming conferences/meetups, live chat status, Discord links, and ticketing.
-public struct VenueDetail: Sendable, Hashable, Identifiable {
+/// Rich detail for a Hackerspace or Conference Venue: the SDK's ``VenueDetail`` with its events mapped to
+/// ``ConferenceEvent``s, plus the venue's ticketing (offers, tonight's cover and the viewer's pass).
+public struct SpaceDetail: Sendable, Hashable, Identifiable {
     public let venue: Venue
     public let description: String?
     public let address: String?
     public let phone: String?
     public let socialLinks: [SocialLink]
     public let chatOpen: Bool
-    public let recentMessages: [ChatMessageItem]
+    public let recentMessages: [ChatMessage]
     public let upcomingEvents: [ConferenceEvent]
-    public let ticketOffers: [TicketOffer]
+    public let ticketOffers: [AdmissionOffer]
     public let coverCharge: CoverCharge?
     public let viewerAdmission: Admission?
 
@@ -109,9 +77,9 @@ public struct VenueDetail: Sendable, Hashable, Identifiable {
         phone: String? = nil,
         socialLinks: [SocialLink] = [],
         chatOpen: Bool = false,
-        recentMessages: [ChatMessageItem] = [],
+        recentMessages: [ChatMessage] = [],
         upcomingEvents: [ConferenceEvent] = [],
-        ticketOffers: [TicketOffer] = [],
+        ticketOffers: [AdmissionOffer] = [],
         coverCharge: CoverCharge? = nil,
         viewerAdmission: Admission? = nil
     ) {
@@ -126,6 +94,24 @@ public struct VenueDetail: Sendable, Hashable, Identifiable {
         self.ticketOffers = ticketOffers
         self.coverCharge = coverCharge
         self.viewerAdmission = viewerAdmission
+    }
+}
+
+extension SpaceDetail {
+    init(_ detail: VenueDetail, upcomingEvents: [ConferenceEvent], ticketOffers: [AdmissionOffer], cover: VenueCover?) {
+        self.init(
+            venue: detail.venue,
+            description: detail.description,
+            address: detail.address,
+            phone: detail.phone,
+            socialLinks: detail.socialLinks ?? [],
+            chatOpen: detail.chatOpen ?? false,
+            recentMessages: detail.recentMessages ?? [],
+            upcomingEvents: upcomingEvents,
+            ticketOffers: ticketOffers,
+            coverCharge: cover?.coverCharge,
+            viewerAdmission: cover?.viewerAdmission
+        )
     }
 }
 

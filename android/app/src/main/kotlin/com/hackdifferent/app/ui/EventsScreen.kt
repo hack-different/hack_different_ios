@@ -1,5 +1,8 @@
 package com.hackdifferent.app.ui
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -58,17 +61,33 @@ import com.hackdifferent.core.formattedAmount
 @Composable
 fun EventsScreen(appState: HackDifferentAppState) {
     var selectedKind by remember { mutableStateOf(EventKind.ALL) }
+    var nearMeOnly by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedEvent by remember { mutableStateOf<ConferenceEvent?>(null) }
 
-    val filteredEvents = remember(appState.events, selectedKind, searchQuery) {
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        appState.refreshLocationIfPermitted()
+    }
+
+    val filteredEvents = remember(
+        appState.events,
+        selectedKind,
+        nearMeOnly,
+        searchQuery,
+        appState.hasLocationOptIn,
+        appState.closestLocale,
+        appState.userCoordinate,
+    ) {
         appState.events.filter { event ->
             val matchesKind = selectedKind == EventKind.ALL || event.kind == selectedKind
+            val matchesLocation = !nearMeOnly || appState.isEventNearby(event)
             val matchesQuery = searchQuery.isBlank() ||
                 event.name.contains(searchQuery, ignoreCase = true) ||
                 event.venueDisplayName.contains(searchQuery, ignoreCase = true) ||
                 event.description?.contains(searchQuery, ignoreCase = true) == true
-            matchesKind && matchesQuery
+            matchesKind && matchesLocation && matchesQuery
         }
     }
 
@@ -111,6 +130,26 @@ fun EventsScreen(appState: HackDifferentAppState) {
                         label = { Text(kind.label) },
                     )
                 }
+                FilterChip(
+                    selected = nearMeOnly,
+                    onClick = {
+                        if (!appState.hasLocationOptIn) {
+                            nearMeOnly = true
+                            permissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                ),
+                            )
+                        } else {
+                            nearMeOnly = !nearMeOnly
+                        }
+                    },
+                    label = {
+                        val region = appState.closestLocale?.name ?: appState.closestLocale?.label
+                        Text(if (appState.hasLocationOptIn && region != null) "Near Me • $region" else "Near Me")
+                    },
+                )
             }
 
             if (filteredEvents.isEmpty()) {

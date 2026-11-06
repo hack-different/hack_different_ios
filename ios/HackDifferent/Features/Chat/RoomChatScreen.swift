@@ -155,7 +155,7 @@ struct RoomChatScreen: View {
                                     Circle()
                                         .fill(Color.green)
                                         .frame(width: 8, height: 8)
-                                    Text(person.name)
+                                    Text(person.displayName)
                                         .font(.subheadline.weight(.medium))
                                     if person.friend {
                                         Spacer()
@@ -188,7 +188,6 @@ struct RoomChatScreen: View {
             let vm = ChatRoomViewModel(
                 room: room,
                 cable: appModel.cable,
-                api: appModel.api,
                 client: appModel.client
             )
             viewModel = vm
@@ -267,7 +266,7 @@ private struct StatusBannerView: View {
 }
 
 private struct ChatMessageBubble: View {
-    let message: ChatMessageItem
+    let message: ChatMessage
     let isMine: Bool
     let onDelete: () -> Void
 

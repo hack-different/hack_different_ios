@@ -1,7 +1,8 @@
 package com.hackdifferent.core
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.audiencekit.ChatMessage
+import com.audiencekit.ChatRoom
+import com.audiencekit.ChatRosterPerson
 
 /**
  * Identifies a live chat room on Action Cable: either a Venue (hackerspace / con venue) or a Locale.
@@ -12,8 +13,9 @@ public sealed interface ChatRoomTarget {
     public val displayName: String
     public val subtitle: String?
     public val discordLink: DiscordChannelLink?
-    public val subscriptionField: String
-    public val argumentName: String
+
+    /** The SDK's room for this target. IDs are sent lowercased, as the API stores them. */
+    public val room: ChatRoom
 
     public data class VenueRoom(
         override val recordId: String,
@@ -22,8 +24,7 @@ public sealed interface ChatRoomTarget {
         override val discordLink: DiscordChannelLink? = null,
     ) : ChatRoomTarget {
         override val id: String = "venue:$recordId"
-        override val subscriptionField: String = "venueChat"
-        override val argumentName: String = "venueId"
+        override val room: ChatRoom get() = ChatRoom.Venue(recordId.lowercase())
     }
 
     public data class LocaleRoom(
@@ -33,41 +34,15 @@ public sealed interface ChatRoomTarget {
         override val id: String = "locale:$recordId"
         override val subtitle: String = "Regional Hacker Chat"
         override val discordLink: DiscordChannelLink? = null
-        override val subscriptionField: String = "localeChat"
-        override val argumentName: String = "localeId"
+        override val room: ChatRoom get() = ChatRoom.Locale(recordId.lowercase())
     }
 }
 
-/**
- * A message in a venue or conference chat room.
- */
-@Serializable
-public data class ChatMessageItem(
-    val id: String,
-    private val body: String? = null,
-    private val message: String? = null,
-    @SerialName("name") val senderName: String = "Hacker",
-    val userId: String? = null,
-    val avatarUrl: String? = null,
-    val sentAt: String? = null,
-    val role: String? = null,
-    val kind: String? = null,
-    val title: String? = null,
-    val pinned: Boolean = false,
-) {
-    public val text: String
-        get() = body ?: message.orEmpty()
-}
+/** Who sent it, for display. */
+public val ChatMessage.senderName: String get() = name ?: "Hacker"
 
-/**
- * Someone currently present in a chat room.
- */
-@Serializable
-public data class ChatParticipant(
-    val userId: String,
-    val name: String = "Hacker",
-    val avatarUrl: String? = null,
-    val friend: Boolean = false,
-) {
-    public val id: String get() = userId
-}
+/** What it says, for display. */
+public val ChatMessage.text: String get() = body.ifBlank { message }
+
+/** Their name, for display. */
+public val ChatRosterPerson.displayName: String get() = name ?: "Hacker"

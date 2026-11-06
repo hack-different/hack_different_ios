@@ -3,44 +3,18 @@
 //  HackDifferent
 //
 
+import AudienceKit
 import Foundation
 
-/// A social profile link returned on a venue or person's `profile.socialLinks`.
-public struct SocialLink: Codable, Hashable, Sendable, Identifiable {
-    public let id: String
-    public let handle: String
-    public let provider: String
-    public let url: URL?
-
-    public init(id: String, handle: String, provider: String, url: URL? = nil) {
-        self.id = id
-        self.handle = handle
-        self.provider = provider
-        self.url = url
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case id, handle, provider, url
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        handle = try container.decodeIfPresent(String.self, forKey: .handle) ?? ""
-        provider = try container.decodeIfPresent(String.self, forKey: .provider) ?? ""
-        if let rawURL = try container.decodeIfPresent(String.self, forKey: .url),
-           !rawURL.isEmpty {
-            url = URL(string: rawURL)
-        } else {
-            url = nil
-        }
-    }
+extension SocialLink {
+    /// Its profile URL, when the API sent a usable one.
+    public var webURL: URL? { url.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
 
     public var isDiscord: Bool {
         if provider.lowercased() == "discord" {
             return true
         }
-        if let host = url?.host?.lowercased(),
+        if let host = webURL?.host?.lowercased(),
            host.contains("discord.gg") || host.contains("discord.com") {
             return true
         }
@@ -87,7 +61,7 @@ public struct DiscordChannelLink: Hashable, Sendable, Identifiable {
         sourceURL: URL? = nil
     ) -> DiscordChannelLink? {
         if let link = socialLinks.first(where: \.isDiscord) {
-            if let url = link.url {
+            if let url = link.webURL {
                 return DiscordChannelLink(
                     title: title,
                     subtitle: link.handle.isEmpty ? "Join Discord" : link.handle,

@@ -1,13 +1,22 @@
 package com.hackdifferent.core
 
 import com.audiencekit.Admission
+import com.audiencekit.AdmissionOffer
 import com.audiencekit.AudienceLocale
+import com.audiencekit.ChatMessage
+import com.audiencekit.Coordinate
 import com.audiencekit.CoverCharge
+import com.audiencekit.Event
+import com.audiencekit.EventPerson
+import com.audiencekit.EventSeries
+import com.audiencekit.EventVenue
 import com.audiencekit.Money
 import com.audiencekit.RSVPState
 import com.audiencekit.Tag
+import com.audiencekit.SocialLink
 import com.audiencekit.Venue
-import kotlinx.serialization.Serializable
+import com.audiencekit.VenueCover
+import com.audiencekit.VenueDetail
 import java.text.NumberFormat
 import java.time.Instant
 import java.util.Currency
@@ -43,35 +52,21 @@ public enum class SpaceCategory(public val label: String) {
     }
 }
 
-@Serializable
-public data class EventOrganizer(
-    val id: String,
-    val name: String,
-    val avatarUrl: String? = null,
-)
-
-@Serializable
 public data class EventVenueSummary(
     val id: String,
     val name: String,
     val photoUrl: String? = null,
     val address: String? = null,
-)
-
-@Serializable
-public data class TicketOffer(
-    val price: Money? = null,
-    val seller: Seller,
-    val url: String? = null,
+    /** Parsed by the SDK from the API's WKT point (`POINT (lng lat)`). */
+    val coordinate: Coordinate? = null,
 ) {
-    @Serializable
-    public data class Seller(
-        val key: String,
-        val name: String,
+    public constructor(venue: EventVenue, displayName: String?) : this(
+        id = venue.id,
+        name = venue.name ?: displayName ?: "Venue",
+        photoUrl = venue.photoUrl,
+        address = venue.location?.address,
+        coordinate = venue.location?.coordinate,
     )
-
-    public val id: String
-        get() = "${seller.key}-${url ?: "in-app"}-${price?.cents ?: 0}"
 }
 
 /**
@@ -83,6 +78,7 @@ public data class ConferenceEvent(
     val description: String? = null,
     val startAt: String? = null,
     val endAt: String? = null,
+    val recurrenceText: String? = null,
     val isFeatured: Boolean = false,
     val isCanceled: Boolean = false,
     val bannerUrl: String? = null,
@@ -93,10 +89,10 @@ public data class ConferenceEvent(
     val tags: List<Tag> = emptyList(),
     val rsvpState: RSVPState = RSVPState.UNSURE,
     val rsvpCount: Int = 0,
-    val hosts: List<EventOrganizer> = emptyList(),
-    val lineup: List<EventOrganizer> = emptyList(),
+    val hosts: List<EventPerson> = emptyList(),
+    val lineup: List<EventPerson> = emptyList(),
     val ticketUrl: String? = null,
-    val ticketOffers: List<TicketOffer> = emptyList(),
+    val ticketOffers: List<AdmissionOffer> = emptyList(),
     val coverCharge: CoverCharge? = null,
 ) {
     public val kind: EventKind
@@ -134,19 +130,69 @@ public data class ConferenceEvent(
         )
 }
 
+/** Maps an SDK [Event] into the view model. */
+public fun Event.toConferenceEvent(): ConferenceEvent {
+    val summary = venue?.let { EventVenueSummary(it, venueName) }
+    return ConferenceEvent(
+        id = id,
+        name = name ?: "Untitled Event",
+        description = description,
+        startAt = startAt,
+        endAt = endAt,
+        isFeatured = isFeatured,
+        isCanceled = isCanceled,
+        bannerUrl = bannerUrl,
+        sourceUrl = sourceUrl,
+        venueDisplayName = venueName ?: summary?.name ?: locale?.name ?: locale?.label ?: "Hack Different",
+        venue = summary,
+        locale = locale,
+        tags = tags,
+        rsvpState = rsvp?.mine ?: RSVPState.UNSURE,
+        rsvpCount = rsvp?.count ?: 0,
+        hosts = hosts.orEmpty(),
+        lineup = lineup.orEmpty(),
+        ticketUrl = ticketUrl,
+        ticketOffers = ticketOffers.orEmpty(),
+        coverCharge = coverCharge,
+    )
+}
+
+/** Maps an SDK [EventSeries] (a recurring meetup) into the view model. */
+public fun EventSeries.toConferenceEvent(): ConferenceEvent {
+    val summary = venue?.let { EventVenueSummary(it, venueName) }
+    val schedule = when {
+        !recurrenceText.isNullOrBlank() && startTime.isNotBlank() -> "$recurrenceText • $startTime"
+        !recurrenceText.isNullOrBlank() -> recurrenceText
+        else -> startTime
+    }
+    return ConferenceEvent(
+        id = id,
+        name = name,
+        description = description,
+        startAt = startsOn,
+        recurrenceText = schedule,
+        bannerUrl = bannerUrl,
+        venueDisplayName = venueName ?: summary?.name ?: locale?.name ?: locale?.label ?: "Hack Different",
+        venue = summary,
+        locale = locale,
+        tags = tags,
+    )
+}
+
 /**
- * Rich detail for a Hackerspace or Conference Venue.
+ * Rich detail for a Hackerspace or Conference Venue: the SDK's [VenueDetail] with its events mapped to
+ * [ConferenceEvent]s, plus the venue's ticketing (offers, tonight's cover and the viewer's pass).
  */
-public data class VenueDetail(
+public data class SpaceDetail(
     val venue: Venue,
     val description: String? = null,
     val address: String? = venue.location?.address,
     val phone: String? = null,
     val socialLinks: List<SocialLink> = emptyList(),
     val chatOpen: Boolean = false,
-    val recentMessages: List<ChatMessageItem> = emptyList(),
+    val recentMessages: List<ChatMessage> = emptyList(),
     val upcomingEvents: List<ConferenceEvent> = emptyList(),
-    val ticketOffers: List<TicketOffer> = emptyList(),
+    val ticketOffers: List<AdmissionOffer> = emptyList(),
     val coverCharge: CoverCharge? = null,
     val viewerAdmission: Admission? = null,
 ) {
@@ -163,6 +209,25 @@ public data class VenueDetail(
             description = description,
         )
 }
+
+public fun SpaceDetail(
+    detail: VenueDetail,
+    upcomingEvents: List<ConferenceEvent>,
+    ticketOffers: List<AdmissionOffer>,
+    cover: VenueCover?,
+): SpaceDetail = SpaceDetail(
+    venue = detail.venue,
+    description = detail.description,
+    address = detail.address ?: detail.venue.location?.address,
+    phone = detail.phone,
+    socialLinks = detail.socialLinks.orEmpty(),
+    chatOpen = detail.chatOpen ?: false,
+    recentMessages = detail.recentMessages.orEmpty(),
+    upcomingEvents = upcomingEvents,
+    ticketOffers = ticketOffers,
+    coverCharge = cover?.coverCharge,
+    viewerAdmission = cover?.viewerAdmission,
+)
 
 /** Formatted currency string (e.g. "$25.00" or "Free" when 0). */
 public val Money.formattedAmount: String

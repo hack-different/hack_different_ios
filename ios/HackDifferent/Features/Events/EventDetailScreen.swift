@@ -37,6 +37,15 @@ struct EventDetailScreen: View {
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
+
+                        if let distance = appModel.location.formattedDistance(
+                            to: event.venue?.coordinate
+                                ?? appModel.venues.first(where: { $0.id == event.venue?.id })?.location?.coordinate
+                        ) {
+                            Label(distance, systemImage: "location.fill")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.teal)
+                        }
                     }
 
                     Text(event.name)
@@ -54,6 +63,12 @@ struct EventDetailScreen: View {
                                 .foregroundStyle(.tint)
                         }
                         .font(.subheadline)
+                    }
+
+                    if let recurrenceText = event.recurrenceText, !recurrenceText.isEmpty {
+                        Label(recurrenceText, systemImage: "repeat")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
 
                     if let venue = event.venue {
@@ -205,7 +220,7 @@ struct EventDetailScreen: View {
 
                     ForEach(event.ticketOffers) { offer in
                         Button {
-                            if let url = offer.url ?? event.ticketURL {
+                            if let url = offer.webURL ?? event.ticketURL {
                                 openURL(url)
                             }
                         } label: {
@@ -308,7 +323,7 @@ struct EventDetailScreen: View {
                             Image(systemName: "person.badge.shield.checkmark.fill")
                                 .foregroundStyle(.tint)
                             VStack(alignment: .leading) {
-                                Text(host.name)
+                                Text(host.name ?? "Organizer")
                                     .font(.subheadline.weight(.medium))
                                 Text("Organizer / Host")
                                     .font(.caption2)
@@ -321,7 +336,7 @@ struct EventDetailScreen: View {
                             Image(systemName: "mic.fill")
                                 .foregroundStyle(.secondary)
                             VStack(alignment: .leading) {
-                                Text(speaker.name)
+                                Text(speaker.name ?? "Speaker")
                                     .font(.subheadline.weight(.medium))
                                 Text("Speaker / Lineup")
                                     .font(.caption2)
