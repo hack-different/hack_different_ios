@@ -4,7 +4,7 @@ Based on the existing rainbow pixel-art organization avatar at https://github.co
 
 The concept preserves the crowned pillar, checkerboard crossbar, branching right edge, stepped pedestal, rainbow bands, and black background. The geometry is simplified for small sizes. This is an exploratory adaptation, not a pixel-exact reproduction.
 
-Generated with the built-in image generation tool. `hack-different-icon-v1.png` is the original generated master. The app asset is an opaque 1024 × 1024 PNG at `HackDifferent/Assets.xcassets/AppIcon.appiconset/AppIcon.png`, resized with sips. Rounded corners are left to the system.
+Generated with the built-in image generation tool. `hack-different-icon-v1.png` is the original generated master. The iOS app asset is an opaque 1024 × 1024 PNG at `ios/HackDifferent/Assets.xcassets/AppIcon.appiconset/AppIcon.png`, and Android launcher icons are generated into `android/app/src/main/res/mipmap-*/ic_launcher.png`, resized with sips. Rounded corners are left to the system.
 
 ## Generation prompt
 
