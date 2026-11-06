@@ -10,7 +10,7 @@ import UIKit
 /// Runtime configuration loaded from `Info.plist` (populated by `.xcconfig`) with
 /// defaults pinned to the Hack Different AudienceKit audience.
 public struct AppConfiguration: Sendable, Hashable {
-    public static let defaultBaseURL = URL(string: "https://hackdiffe.rent")!
+    public static let defaultBaseURL = AudienceKitSDK.productionBaseURL
     public static let defaultAudienceID = "2416ce6c-f28a-4460-8b6f-840f3c0027c9"
     public static let defaultAudienceHost = "hack-different.admin.audiencekit.com"
     public static let defaultFacebookAppID = "713525445368431"

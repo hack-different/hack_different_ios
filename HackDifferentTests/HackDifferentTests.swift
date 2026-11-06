@@ -15,7 +15,7 @@ struct HackDifferentTests {
         let config = AppConfiguration()
         #expect(config.host == "hack-different.admin.audiencekit.com")
         #expect(config.audienceID == "2416ce6c-f28a-4460-8b6f-840f3c0027c9")
-        #expect(config.baseURL == URL(string: "https://hackdiffe.rent")!)
+        #expect(config.baseURL == URL(string: "https://api.audiencekit.com")!)
 
         let akConfig = config.audienceKitConfiguration
         #expect(akConfig.host == "hack-different.admin.audiencekit.com")
