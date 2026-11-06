@@ -1,0 +1,15 @@
+{
+  "originHash" : "462b0182680e93079aae6d1c095641767a0858357f42476e0b9712e61e378886",
+  "pins" : [
+    {
+      "identity" : "audience-kit-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/lwm-luminx/audience-kit-sdk.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "490aa3e4666443ec6f25699581b3eb08ee3d56ec"
+      }
+    }
+  ],
+  "version" : 3
+}

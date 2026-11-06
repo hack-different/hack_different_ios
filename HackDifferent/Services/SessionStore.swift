@@ -22,7 +22,7 @@ public enum AuthenticationState: Equatable, Sendable {
 @Observable
 public final class SessionStore {
     public static let credentialStore = KeychainCredentialStore(
-        service: "org.hackdifferent.session",
+        service: "com.hackdifferent.app.session",
         account: "credential"
     )
 
