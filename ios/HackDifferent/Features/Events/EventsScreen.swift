@@ -251,6 +251,7 @@ struct EventsScreen: View {
                                         distanceLabel: formattedDistanceForEvent(event)
                                     )
                                 }
+                                .accessibilityIdentifier("event.row")
                             }
                         } header: {
                             Label("Near You • \(regionTitle)", systemImage: "location.fill")
@@ -278,6 +279,7 @@ struct EventsScreen: View {
                                     distanceLabel: formattedDistanceForEvent(event)
                                 )
                             }
+                            .accessibilityIdentifier("event.row")
                         }
                     }
                 }
