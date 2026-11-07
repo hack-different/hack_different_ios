@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import com.audiencekit.Admission
 import com.audiencekit.AppleWebSignIn
 import com.audiencekit.AudienceKitClient
+import com.audiencekit.DeleteAccountCopy
 import com.audiencekit.AudienceKitEnvironment
 import com.audiencekit.AudienceKitException
 import com.audiencekit.AudienceLocale
@@ -393,6 +394,17 @@ class HackDifferentAppState(
     fun signOut() {
         client.signOut()
     }
+
+    /**
+     * Deletes the account for good (Google Play's account deletion rule, App Store 5.1.1(v)). On success the SDK
+     * sends SIGNED_OUT, which shows sign-in again. Returns null when it worked, or what to tell the person.
+     */
+    suspend fun deleteAccount(): String? =
+        try {
+            if (client.deleteAccount()) null else DeleteAccountCopy.NOT_DELETED
+        } catch (e: Exception) {
+            e.localizedMessage ?: DeleteAccountCopy.NOT_DELETED
+        }
 
     fun openExternalUrl(context: Context, url: String) {
         runCatching {
