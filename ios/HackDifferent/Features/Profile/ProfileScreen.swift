@@ -4,6 +4,7 @@
 //
 
 import AudienceKit
+import AudienceKitUI
 import SwiftUI
 
 struct ProfileScreen: View {
@@ -98,6 +99,14 @@ struct ProfileScreen: View {
                     } label: {
                         Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
+                }
+
+                // App Store 5.1.1(v): deleting the account from inside the app. The SDK signs out on success,
+                // and SessionStore shows sign-in on that event.
+                Section {
+                    DeleteAccountButton(client: appModel.client, appName: "Hack Different")
+                } footer: {
+                    Text("Deletes your profile, messages, RSVPs and passes for good.")
                 }
             }
             .navigationTitle("Profile")

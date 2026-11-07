@@ -124,6 +124,7 @@ struct ChatHubScreen: View {
                                 }
                                 .padding(.vertical, 2)
                             }
+                            .accessibilityIdentifier("chat.row")
                         }
                     }
                 } header: {
@@ -155,6 +156,7 @@ struct ChatHubScreen: View {
                                         .foregroundStyle(.teal)
                                 }
                             }
+                            .accessibilityIdentifier("chat.row")
                         }
                     }
                 }

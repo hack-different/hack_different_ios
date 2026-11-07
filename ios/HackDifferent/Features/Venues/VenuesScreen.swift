@@ -208,6 +208,7 @@ struct VenuesScreen: View {
                                         eventCount: appModel.events.filter { $0.venue?.id == venue.id }.count
                                     )
                                 }
+                                .accessibilityIdentifier("space.row")
                             }
                         } header: {
                             Label("Near You • \(regionTitle)", systemImage: "location.fill")
@@ -235,6 +236,7 @@ struct VenuesScreen: View {
                                     eventCount: appModel.events.filter { $0.venue?.id == venue.id }.count
                                 )
                             }
+                            .accessibilityIdentifier("space.row")
                         }
                     }
                 }
